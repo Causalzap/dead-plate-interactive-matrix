@@ -1,0 +1,1354 @@
+{
+  "game": {
+    "id": "dead-plate",
+    "title": "Dead Plate",
+    "developer": "Studio Investigrave (Rachel Draws This)",
+    "platform": "RPG Maker",
+    "duration": "1.5-3 hours",
+    "release_date": "2023-11-XX",
+    "genre": ["Horror", "Visual Novel", "Restaurant Simulator"],
+    "stats": {
+      "note": "Canon game uses EVENT FLAGS (binary triggers), not visible numerical stats. This simulator adds Suspicion/Affinity (0-100) for player feedback.",
+      "simulated_ui_stats": {
+        "suspicion": { "range": [0, 100], "default_start": 20 },
+        "affinity": { "range": [0, 100], "default_start": 20 }
+      },
+      "currency": {
+        "name": "Money",
+        "per_plate_served": 50,
+        "full_course_tip": 25,
+        "per_day_range": "75-250"
+      },
+      "event_flags": [
+        {
+          "flag_name": "trash_cutscene_triggered",
+          "trigger": "Take out trash on Day 3 (non-skippable cutscene)",
+          "impact": "Finger cut; Vincent bandages; relationship deepens; REQUIRED for phone call chain"
+        },
+        {
+          "flag_name": "phone_call_ready",
+          "trigger": "Complete all 5 phone call requirements (see phone_call_requirements)",
+          "impact": "Phone call received after Day 6 shift; enables Endings 2-4"
+        },
+        {
+          "flag_name": "matches_purchased",
+          "trigger": "Buy matches from catalog (~500 currency)",
+          "impact": "Required for Endings 3-4; enables freezer escape puzzle"
+        },
+        {
+          "flag_name": "freezer_key_acquired",
+          "trigger": "Search Vincent's nightstand (Day 6 night)",
+          "impact": "Allows freezer entry on Day 7; enables ending branching"
+        }
+      ]
+    },
+    "phone_call_requirements": {
+      "note": "Canon uses flags; this simulator treats phone call readiness as a 5-step checklist.",
+      "steps": [
+        {
+          "step": 1,
+          "flag": "trash_cutscene_triggered",
+          "source_day": 3,
+          "flag_triggered": "phone_call_step_0_trash_cutscene"
+        },
+        {
+          "step": 2,
+          "flag": "raise_dialogue_selected",
+          "source_day": 4,
+          "flag_triggered": "phone_call_step_1"
+        },
+        {
+          "step": 3,
+          "flag": "job_dialogue_selected",
+          "source_day": 4,
+          "flag_triggered": "phone_call_step_2"
+        },
+        {
+          "step": 4,
+          "flag": "single_dialogue_selected",
+          "source_day": 4,
+          "flag_triggered": "phone_call_step_3"
+        },
+        {
+          "step": 5,
+          "flag": "favorite_food_dialogue_selected",
+          "source_day": 5,
+          "flag_triggered": "phone_call_step_4"
+        }
+      ],
+      "computed": {
+        "ready_flag": "phone_call_ready",
+        "ready_when_all_true": [
+          "trash_cutscene_triggered",
+          "raise_dialogue_selected",
+          "job_dialogue_selected",
+          "single_dialogue_selected",
+          "favorite_food_dialogue_selected"
+        ]
+      }
+    }
+  },
+  "systems": {
+    "hidden_mechanics": {
+      "item_equip_system": {
+        "only_one_item_equipped_at_a_time": true,
+        "notes": [
+          "Matches are mandatory for Endings 3-4.",
+          "Other items (cologne/roller skates/etc.) affect gameplay speed/difficulty, not ending eligibility."
+        ]
+      },
+      "nightmare_progression": [
+        {
+          "night": 1,
+          "occurs_after_day": 3,
+          "events": ["Body itches", "Butcher diagram knives appear"]
+        },
+        {
+          "night": 2,
+          "occurs_after_day": 4,
+          "events": ["Rody trapped in meat packaging with his name"]
+        },
+        {
+          "night": 3,
+          "occurs_after_day": 5,
+          "events": ["Rody trapped in oven (dark space, beeping)"]
+        },
+        {
+          "night": 4,
+          "occurs_after_day": 6,
+          "events": ["Rody on dinner plate", "Fork/knife impaling", "Vincent eating"]
+        }
+      ],
+      "dialogue_branch_system": {
+        "note": "Dialogue branches reveal different lore/texture but do not change money, ending eligibility, or relationship stats in canon. Simulator still assigns UI deltas for feedback."
+      }
+    }
+  },
+  "days": [
+    {
+      "day": 0,
+      "type": "Tutorial",
+      "title": "DAY 0: TUTORIAL (Non-playable story segment)",
+      "playable": false,
+      "customers": 2,
+      "menu": {
+        "appetizer": "Standard tutorial dish",
+        "main": "Standard tutorial dish",
+        "side": "Standard tutorial dish",
+        "dessert": "Standard tutorial dish"
+      },
+      "critical_events": [
+        "Vincent: training introduction",
+        "Training sequences: seating, ordering, kitchen workflow, cash register, trash management"
+      ],
+      "dialogue": [
+        { "speaker": "Vincent", "text": "You actually showed up for training. Barely." },
+        { "speaker": "Vincent", "text": "Your resume showed many...many jobs. I'm choosing to ignore the rate." },
+        { "speaker": "Vincent", "text": "This is a highly sought after position. Be grateful." }
+      ],
+      "choices": [],
+      "flags_set": [{ "flag": "day_0_completed", "value": true }],
+      "money_earned": 0,
+      "reward_item": null,
+      "instant_death_flags": []
+    },
+    {
+      "day": 1,
+      "type": "First Shift",
+      "title": "DAY 1: FIRST SHIFT",
+      "playable": true,
+      "customers": 3,
+      "menu": {
+        "appetizer": "Soupe à l'oignon",
+        "main": "Ratatouille",
+        "side": "Broccoli kale salad with lemon dressing",
+        "dessert": "Red wine chocolate truffles"
+      },
+      "critical_events": ["Rody works alone while Vincent stays in kitchen", "First nightmare triggers after shift"],
+      "dialogue": [
+        { "speaker": "Vincent", "text": "If things are feeling too slow, you've forgotten about something." },
+        { "speaker": "Vincent", "text": "If you can't pick up customers plates, check the garbage." },
+        { "speaker": "Vincent", "text": "When customers answer correctly, they'll tip extra." },
+        { "speaker": "Vincent", "text": "Look, I know it's your first day but you don't need to rely on me this much." }
+      ],
+      "choices": [],
+      "flags_set": [{ "flag": "day_1_completed", "value": true }],
+      "money_earned": "75-100",
+      "reward_item": "Green onion rolls",
+      "instant_death_flags": []
+    },
+    {
+      "day": 2,
+      "type": "Second Shift",
+      "title": "DAY 2: SECOND SHIFT",
+      "playable": true,
+      "customers": 4,
+      "menu": {
+        "appetizer": "Oeufs en gelée",
+        "main": "Poivrons à la tomate",
+        "side": "Gratin dauphinois",
+        "dessert": "Raspberry meringues"
+      },
+      "critical_events": ["Rody arrives late in rain", "Vincent lends umbrella", "Reveals he lives upstairs"],
+      "dialogue": [
+        { "speaker": "Rody", "text": "Sorry I'm late..." },
+        { "speaker": "Vincent", "text": "Sorry doesn't cut it. It's only your second day and already—" },
+        { "speaker": "Vincent", "text": "Why do you look like that?" },
+        { "speaker": "Rody", "text": "I thought biking fast through rain would dry me..." },
+        { "speaker": "Vincent", "text": "Do you know umbrellas exist for a reason?" },
+        { "speaker": "Vincent", "text": "I'm giving you mine for the ride back." },
+        { "speaker": "Rody", "text": "How are you getting home without one?" },
+        { "speaker": "Vincent", "text": "I live here. Upstairs." },
+        { "speaker": "Rody", "text": "Like in the restaurant?" },
+        { "speaker": "Vincent", "text": "My apartment's upstairs." },
+        { "speaker": "Vincent", "text": "If you have enough time for nonsense, you're ready for work." }
+      ],
+      "choices": [],
+      "flags_set": [
+        { "flag": "day_2_completed", "value": true },
+        { "flag": "vincent_caring_shown", "value": true }
+      ],
+      "money_earned": "100-125",
+      "reward_item": "Blueberry crepes",
+      "instant_death_flags": []
+    },
+    {
+      "day": 3,
+      "type": "Trash Cutscene",
+      "title": "DAY 3: TRASH CUTSCENE (CRITICAL EVENT)",
+      "playable": true,
+      "customers": 5,
+      "menu": {
+        "appetizer": "Shucked oysters with mignonette sauce",
+        "main": "Sole meunière",
+        "side": "Sautéed mushrooms",
+        "dessert": "Poached pears in red wine"
+      },
+      "critical_events": [
+        "Automatic: Rody cuts finger on trash",
+        "Vincent slaps and bandages (mandatory)",
+        "Nightmare sequence becomes active after Day 3"
+      ],
+      "dialogue": [
+        { "speaker": "Rody", "text": "Ow! There's something in the trash. I think it cut me." },
+        { "speaker": "Vincent", "text": "[Silent stare]" },
+        { "speaker": "Rody", "text": "I can clean up the mess, I just need a second." },
+        { "speaker": "System", "text": "[SMACK - Vincent slaps Rody]" },
+        { "speaker": "Vincent", "text": "You don't need to worry about that. Let me see your hand." },
+        { "speaker": "Vincent", "text": "You can't be serving customers with this." },
+        { "speaker": "Vincent", "text": "Try to be more careful next time." }
+      ],
+      "choices": [
+        {
+          "choice_id": "day3_postcutscene_dialogue",
+          "type": "single_choice",
+          "prompt": "Post-Cutscene Dialogue Options (Choose 1)",
+          "options": [
+            {
+              "option_id": "day3_opt1",
+              "label": "How am I doing so far?",
+              "dialogue": [
+                { "speaker": "Vincent", "text": "You haven't gotten fired yet, have you?" },
+                { "speaker": "Rody", "text": "Not that I know of." },
+                { "speaker": "Vincent", "text": "Then you're doing fine." }
+              ],
+              "simulated_stats_delta": { "suspicion": 0, "affinity": 3 },
+              "flags_set": [{ "flag": "day3_post_choice", "value": "how_am_i_doing" }]
+            },
+            {
+              "option_id": "day3_opt2",
+              "label": "Can I have any of the leftovers?",
+              "dialogue": [
+                { "speaker": "Vincent", "text": "Don't you have anything to cook with at your place?" },
+                { "speaker": "Rody", "text": "Nah. Even if I did, I'd be a terrible chef." },
+                { "speaker": "Rody", "text": "Anything I touch I end up burning." },
+                { "speaker": "Vincent", "text": "Maybe peanut butter and jelly is more on your level." },
+                { "speaker": "Rody", "text": "Those are way out of my league! Last time I made one, it was charcoal." },
+                { "speaker": "Vincent", "text": "..." }
+              ],
+              "simulated_stats_delta": { "suspicion": 0, "affinity": 0 },
+              "flags_set": [{ "flag": "day3_post_choice", "value": "leftovers" }]
+            },
+            {
+              "option_id": "day3_opt3",
+              "label": "So about you smoking here...",
+              "dialogue": [
+                { "speaker": "Rody", "text": "Aren't you supposed to be smoking in the kitchen?" },
+                { "speaker": "Vincent", "text": "Why wouldn't I be? It's MY kitchen." },
+                { "speaker": "Rody", "text": "Doesn't that bother the cooks?" },
+                { "speaker": "Vincent", "text": "They smoke meat all the time." }
+              ],
+              "simulated_stats_delta": { "suspicion": 2, "affinity": -1 },
+              "flags_set": [{ "flag": "day3_post_choice", "value": "smoking" }]
+            }
+          ]
+        }
+      ],
+      "flags_set": [
+        { "flag": "trash_cutscene_triggered", "value": true },
+        { "flag": "nightmare_sequence_active", "value": true },
+        { "flag": "day_3_completed", "value": true },
+        { "flag": "phone_call_step_0_trash_cutscene", "value": true }
+      ],
+      "money_earned": "125-150",
+      "reward_item": "Squid ink pasta with shrimp",
+      "instant_death_flags": []
+    },
+    {
+      "day": 4,
+      "type": "Kitchen Discipline",
+      "title": "DAY 4: KITCHEN INCIDENT + DIALOGUE BRANCH",
+      "playable": true,
+      "customers": 6,
+      "menu": {
+        "appetizer": "Smoked salmon canapés",
+        "main": "Coq au vin",
+        "side": "Roasted asparagus with balsamic vinegar",
+        "dessert": "Strawberries in champagne with crème chantilly"
+      },
+      "critical_events": [
+        "Cutscene: Vincent disciplines cook aggressively",
+        "Vincent leaves for break to alley",
+        "Rat appears (feeding cheese changes reward)",
+        "Phone call chain dialogues (3 required options)"
+      ],
+      "dialogue": [
+        { "speaker": "Vincent", "text": "Who the hell do you think you are?!" },
+        { "speaker": "Rody", "text": "?!?" },
+        { "speaker": "NPC (Cook)", "text": "I apologize, Chef!" },
+        { "speaker": "Vincent", "text": "A sorry doesn't fucking cut it, now does it?!" },
+        { "speaker": "Vincent", "text": "Do you think a dish like that is acceptable in MY kitchen?!" },
+        { "speaker": "NPC (Cook)", "text": "No, Chef!" },
+        { "speaker": "Vincent", "text": "Then why did you MAKE IT?" },
+        { "speaker": "NPC (Cook)", "text": "I don't know, Chef. It slipped my mind." },
+        { "speaker": "Vincent", "text": "DON'T TALK BACK TO ME IN MY OWN FUCKING KITCHEN, YOU DAMN PIG!" },
+        { "speaker": "Vincent", "text": "If you plan on being a semi-decent cook, you have NO reason to be scared of a stove." },
+        { "speaker": "Vincent", "text": "You get burnt, you keep cooking." },
+        { "speaker": "Vincent", "text": "If you can't follow simple safety regulations, it'll be your own damn fault." },
+        { "speaker": "NPC (Cook)", "text": "Yes, Chef." },
+        { "speaker": "Vincent", "text": "I need a break." }
+      ],
+      "choices": [
+        {
+          "choice_id": "day4_vincent_dialogues",
+          "type": "multi_select",
+          "prompt": "Dialogue Options with Vincent (Select all 3 to fulfill phone call chain)",
+          "requirements": { "must_select_all": true },
+          "options": [
+            {
+              "option_id": "day4_single",
+              "label": "Are you single?",
+              "flag_triggered": "phone_call_step_3",
+              "dialogue": [
+                { "speaker": "Vincent", "text": "Why do you ask?" },
+                { "speaker": "Rody", "text": "Just curious. You must get lots of ladies?" },
+                { "speaker": "Vincent", "text": "Sure." },
+                { "speaker": "Rody", "text": "So why aren't you seeing any of them?" },
+                { "speaker": "Vincent", "text": "Look, I'm not sure what you're digging for here." },
+                { "speaker": "Rody", "text": "Well, why are you here? You don't even cook. Financially stable. Why not relax and settle down?" },
+                { "speaker": "Vincent", "text": "I don't run this place for money. I've got actual stake here. THIS is me settling down." },
+                { "speaker": "Vincent", "text": "Chasing petty romances isn't the end-all be-all in life." },
+                { "speaker": "Rody", "text": "Who is this all for if not for someone? What's the point without a wife or kids?" },
+                { "speaker": "Vincent", "text": "Isn't it enough to have it for myself?" },
+                { "speaker": "Rody", "text": "Yeesh. Suit yourself." }
+              ],
+              "simulated_stats_delta": { "suspicion": 3, "affinity": 1 },
+              "flags_set": [
+                { "flag": "single_dialogue_selected", "value": true },
+                { "flag": "phone_call_step_3", "value": true }
+              ]
+            },
+            {
+              "option_id": "day4_raise",
+              "label": "Can you give me a raise?",
+              "flag_triggered": "phone_call_step_1",
+              "dialogue": [
+                { "speaker": "Vincent", "text": "*Pfft - Hah!*" },
+                { "speaker": "Rody", "text": "So is that a no?" },
+                { "speaker": "Vincent", "text": "Yeah, that's a no. You're not getting a raise." },
+                { "speaker": "Rody", "text": "*Ugh...*" },
+                { "speaker": "Vincent", "text": "Why do you need one anyway?" },
+                { "speaker": "Rody", "text": "It's for a girl. Her name's Manon." },
+                { "speaker": "Rody", "text": "I should have just enough by end of week but a bit more could mean something really special." },
+                { "speaker": "Vincent", "text": "You make tips. Do good at your job and you'll earn enough." },
+                { "speaker": "Rody", "text": "Booooo..." },
+                { "speaker": "Vincent", "text": "...Why do you need this much money? Is she excessive?" },
+                { "speaker": "Rody", "text": "Of course not! Well...a little. But she's not prissy." },
+                { "speaker": "Rody", "text": "And she's WORTH IT! Every cent! She's worth all of it!" },
+                { "speaker": "Rody", "text": "When I can show her how much she means to me, it'll all be worth it too." },
+                { "speaker": "Vincent", "text": "Mm." },
+                { "speaker": "Rody", "text": "What?" },
+                { "speaker": "Vincent", "text": "Nothing." }
+              ],
+              "simulated_stats_delta": { "suspicion": 2, "affinity": 4 },
+              "flags_set": [
+                { "flag": "raise_dialogue_selected", "value": true },
+                { "flag": "phone_call_step_1", "value": true }
+              ]
+            },
+            {
+              "option_id": "day4_job",
+              "label": "Do you like your job?",
+              "flag_triggered": "phone_call_step_2",
+              "dialogue": [
+                { "speaker": "Vincent", "text": "I've dedicated my life to making this bistro as successful as it is now." },
+                { "speaker": "Rody", "text": "Yeah, but do you LIKE it?" },
+                { "speaker": "Vincent", "text": "What do you mean by that?" },
+                { "speaker": "Rody", "text": "Well, you claim to be proud owner but I don't think I've ever seen you cook." },
+                { "speaker": "Vincent", "text": "...!" },
+                { "speaker": "Rody", "text": "...??" },
+                { "speaker": "Vincent", "text": "...What about you?" },
+                { "speaker": "Rody", "text": "Me? I mean...it pays me money?" },
+                { "speaker": "Vincent", "text": "What did you want to do before this?" },
+                { "speaker": "Rody", "text": "Well, I uh...I was studying in school for something." },
+                { "speaker": "Vincent", "text": "Oh? What were you studying?" },
+                { "speaker": "Rody", "text": "You're definitely gonna make fun of me if I told you." },
+                { "speaker": "Vincent", "text": "You don't need to be too worried about that." },
+                { "speaker": "Vincent", "text": "It can't be any more embarrassing than you are now." },
+                { "speaker": "Rody", "text": "Yeah, see, that kind of talk is exactly what I mean." }
+              ],
+              "simulated_stats_delta": { "suspicion": -2, "affinity": 5 },
+              "flags_set": [
+                { "flag": "job_dialogue_selected", "value": true },
+                { "flag": "phone_call_step_2", "value": true }
+              ]
+            }
+          ]
+        },
+        {
+          "choice_id": "day4_rat_interaction",
+          "type": "single_choice",
+          "prompt": "Rat Interaction",
+          "options": [
+            {
+              "option_id": "day4_feed_cheese",
+              "label": "Feed the rat cheese",
+              "dialogue": [],
+              "simulated_stats_delta": { "suspicion": 0, "affinity": 2 },
+              "flags_set": [
+                { "flag": "rat_fed_cheese", "value": true },
+                { "flag": "rat_died", "value": true }
+              ]
+            },
+            {
+              "option_id": "day4_do_not_feed",
+              "label": "Do not feed the rat cheese",
+              "dialogue": [],
+              "simulated_stats_delta": { "suspicion": 0, "affinity": 0 },
+              "flags_set": [{ "flag": "rat_fed_cheese", "value": false }]
+            }
+          ]
+        },
+        {
+          "choice_id": "day4_post_cutscene",
+          "type": "single_choice",
+          "prompt": "Post-Cutscene Interaction",
+          "options": [
+            {
+              "option_id": "day4_continue",
+              "label": "Continue",
+              "dialogue": [
+                { "speaker": "Rody", "text": "Hey Vince." },
+                { "speaker": "Vincent", "text": "What do you want?" }
+              ],
+              "simulated_stats_delta": { "suspicion": 0, "affinity": 0 },
+              "flags_set": []
+            }
+          ]
+        }
+      ],
+      "flags_set": [
+        { "flag": "day_4_completed", "value": true },
+        { "flag": "kitchen_argument_witnessed", "value": true }
+      ],
+      "money_earned": "150-175",
+      "reward_item": {
+        "default": "Strawberry shortcake",
+        "conditional": [
+          {
+            "if_flag": { "flag": "rat_fed_cheese", "equals": true },
+            "reward": "dead rat"
+          }
+        ]
+      },
+      "instant_death_flags": []
+    },
+    {
+      "day": 5,
+      "type": "Lore Dump + Office Snooping",
+      "title": "DAY 5: LORE DUMP + OFFICE SNOOPING",
+      "playable": true,
+      "customers": 8,
+      "menu": {
+        "appetizer": "Jambon rouleaux de chèvre",
+        "main": "Foie gras",
+        "side": "French bread",
+        "dessert": "Rhubarb and pomegranate molasses crème brûlée"
+      },
+      "critical_events": [
+        "Rody looks exhausted (nightmares)",
+        "After shift: lights out except freezer; strange sounds from freezer",
+        "Vincent's office door is unlocked; optional snooping reveals Manon photo and letters"
+      ],
+      "dialogue": [],
+      "choices": [
+        {
+          "choice_id": "day5_vincent_dialogue_choices",
+          "type": "single_choice",
+          "prompt": "Dialogue with Vincent (Choose 1)",
+          "options": [
+            {
+              "option_id": "day5_reading",
+              "label": "What are you reading?",
+              "dialogue": [
+                { "speaker": "Vincent", "text": "Restaurant reviews." },
+                { "speaker": "Rody", "text": "What does it say? Does it mention me?" },
+                { "speaker": "Vincent", "text": "..." },
+                { "speaker": "Vincent", "text": "...They didn't mention you, no." },
+                { "speaker": "Rody", "text": "Awww damn. They don't appreciate good service!" },
+                { "speaker": "Vincent", "text": "Guess not." }
+              ],
+              "simulated_stats_delta": { "suspicion": 0, "affinity": 0 },
+              "flags_set": [{ "flag": "day5_dialogue_selected", "value": "reading" }]
+            },
+            {
+              "option_id": "day5_break",
+              "label": "Can I have a break?",
+              "dialogue": [
+                { "speaker": "Rody", "text": "I'm getting kind of tired..." },
+                { "speaker": "Vincent", "text": "Why? Did you not have anything for lunch?" },
+                { "speaker": "Rody", "text": "It's more because of the—" },
+                { "speaker": "Rody", "text": "...N-never mind. Um, no, I didn't. I couldn't afford it." },
+                { "speaker": "Vincent", "text": "Hm, I suppose I could let you eat leftover scraps after all..." },
+                { "speaker": "Rody", "text": "Really?! You're being serious?!" },
+                { "speaker": "Vincent", "text": "Sure I am." },
+                { "speaker": "Vincent", "text": "*But you better enjoy those meals more than those [censored] customers did*" },
+                { "speaker": "Vincent", "text": "*Once your shift's over, all these dishes better be licked spotless or it's coming out of your paycheck*" },
+                { "speaker": "Rody", "text": "...Aye aye sir." }
+              ],
+              "simulated_stats_delta": { "suspicion": 3, "affinity": 1 },
+              "flags_set": [{ "flag": "day5_dialogue_selected", "value": "break" }]
+            },
+            {
+              "option_id": "day5_favorite_food",
+              "label": "You got a favorite food?",
+              "flag_triggered": "phone_call_step_4",
+              "dialogue": [
+                { "speaker": "Rody", "text": "Got a favorite food?" },
+                { "speaker": "Vincent", "text": "Not really, no." },
+                { "speaker": "Rody", "text": "That sounded pretty noncommittal." },
+                { "speaker": "Vincent", "text": "Well, there's not much I can pick from." },
+                { "speaker": "Rody", "text": "That's not an answer." },
+                { "speaker": "Vincent", "text": "Then I guess...Lemons." },
+                { "speaker": "Rody", "text": "Like lemon pie? Lemon tarts??" },
+                { "speaker": "Vincent", "text": "No. Just lemons." },
+                { "speaker": "Rody", "text": "How can you stand just eating raw lemons? Aren't they sour?" },
+                { "speaker": "Vincent", "text": "I wouldn't know." },
+                { "speaker": "Rody", "text": "What—" },
+                { "speaker": "Vincent", "text": "I don't have any sense of taste." },
+                { "speaker": "Rody", "text": "WOAH—What, really?? No wonder your food tastes like that!" },
+                { "speaker": "Rody", "text": "You must be a miserable cook!" },
+                { "speaker": "Vincent", "text": "*What's wrong with my cooking?*" },
+                { "speaker": "Rody", "text": "A—Erm, NOTHING SIR!!" },
+                { "speaker": "Vincent", "text": "..." },
+                { "speaker": "Vincent", "text": "What about you?" },
+                { "speaker": "Rody", "text": "—?" },
+                { "speaker": "Vincent", "text": "What's YOUR favorite food?" },
+                { "speaker": "Rody", "text": "Do I have to pick just one?" },
+                { "speaker": "Vincent", "text": "That sounds pretty noncommittal." },
+                { "speaker": "Rody", "text": "Alright, alright. I guess I eat whatever my girlfriend's into?" },
+                { "speaker": "Vincent", "text": "That's also not an answer." },
+                { "speaker": "Rody", "text": "It's still better than LEMONS." },
+                { "speaker": "Vincent", "text": "*Nevermind.*" }
+              ],
+              "simulated_stats_delta": { "suspicion": 1, "affinity": 5 },
+              "flags_set": [
+                { "flag": "favorite_food_dialogue_selected", "value": true },
+                { "flag": "phone_call_step_4", "value": true },
+                { "flag": "phone_call_progress_add", "value": 1 }
+              ],
+              "notes": [
+                "Major lore reveal: Vincent has no sense of taste (ageusia).",
+                "Required for phone call chain."
+              ]
+            }
+          ]
+        },
+        {
+          "choice_id": "day5_office_snooping",
+          "type": "single_choice",
+          "prompt": "Optional Night Action: Office Snooping",
+          "options": [
+            {
+              "option_id": "day5_snoop_yes",
+              "label": "Snoop Vincent's office",
+              "dialogue": [
+                { "speaker": "System", "text": "[Rody searches office trash]" },
+                { "speaker": "Rody", "text": "This is a picture of Vincent with... Manon?" },
+                { "speaker": "Rody", "text": "There are love letters here. Addressed to Manon. From Vincent?" },
+                { "speaker": "Rody", "text": "...I don't want to read these." },
+                { "speaker": "System", "text": "[Rody leaves office]" }
+              ],
+              "simulated_stats_delta": { "suspicion": 0, "affinity": 0 },
+              "flags_set": [{ "flag": "office_snooped", "value": true }]
+            },
+            {
+              "option_id": "day5_snoop_no",
+              "label": "Do not snoop",
+              "dialogue": [],
+              "simulated_stats_delta": { "suspicion": 0, "affinity": 0 },
+              "flags_set": [{ "flag": "office_snooped", "value": false }]
+            }
+          ]
+        }
+      ],
+      "flags_set": [{ "flag": "day_5_completed", "value": true }],
+      "money_earned": "200-250",
+      "reward_item": "Croque madame",
+      "instant_death_flags": []
+    },
+    {
+      "day": 6,
+      "type": "Dinner Party + Freezer Key + Phone Call",
+      "title": "DAY 6: DINNER PARTY + FREEZER KEY + PHONE CALL",
+      "playable": true,
+      "customers": "7 (shift) + 4 (party)",
+      "menu": {
+        "appetizer": "Pâté en croûte",
+        "main": "Tête de Veau",
+        "side": "Caviar",
+        "dessert": "Apple galette"
+      },
+      "critical_events": [
+        "Regular shift: Vincent in office, not kitchen",
+        "Secret: eye hole in wall; Vincent's bloodshot eye watching shift",
+        "Phone call at night (conditional on phone_call_ready)",
+        "Dinner party: Rody is used as cater",
+        "Freezer key acquired from nightstand; Vincent catches Rody immediately",
+        "Confrontation: Rody asks about Manon"
+      ],
+      "dialogue": [],
+      "choices": [
+        {
+          "choice_id": "day6_phone_call",
+          "type": "gated_choice",
+          "prompt": "Phone Call (Night of Day 6) - CONDITIONAL",
+          "gate": { "requires_all_flags_true": ["phone_call_ready"] },
+          "intro_dialogue": [
+            { "speaker": "System", "text": "[Phone rings]" },
+            { "speaker": "Rody", "text": "Hi, hello? Manon, is that you?" },
+            { "speaker": "Vincent", "text": "Pardon?" },
+            { "speaker": "Rody", "text": "Oh Vince! Sorry, I thought—Nevermind. What's up?" },
+            { "speaker": "Vincent", "text": "Are you free tonight?" },
+            { "speaker": "Rody", "text": "...Uh?" },
+            { "speaker": "Vincent", "text": "I'm hosting a dinner party at my apartment and was checking if you'd be available." },
+            { "speaker": "Rody", "text": "Oh! That's what you meant—Wait, you're inviting ME?" },
+            { "speaker": "Vincent", "text": "Is that a yes or a no?" }
+          ],
+          "options": [
+            {
+              "option_id": "day6_phone_no",
+              "label": "No",
+              "dialogue": [
+                { "speaker": "Rody", "text": "Well uh—I don't know, this feels really sudden, I—" },
+                { "speaker": "Rody", "text": "...Did he just hang up on me?" }
+              ],
+              "simulated_stats_delta": { "suspicion": 5, "affinity": -5 },
+              "flags_set": [
+                { "flag": "phone_call_received", "value": true },
+                { "flag": "dinner_party_attended", "value": false },
+                { "flag": "ending_path_locked", "value": "TABLE_FOR_ONE" }
+              ],
+              "notes": ["Declining locks player into Day 7 normal shift → Table for One ending."]
+            },
+            {
+              "option_id": "day6_phone_yes",
+              "label": "Yes",
+              "dialogue": [
+                { "speaker": "Rody", "text": "I—well—sure?? But before that I wanted to ask you about—" },
+                { "speaker": "Vincent", "text": "Be there in the next few minutes." },
+                { "speaker": "System", "text": "[CLICK]" },
+                { "speaker": "Rody", "text": "...I guess I can just ask in person." },
+                { "speaker": "Rody", "text": "...This feels like walking into a mouse trap." },
+                { "speaker": "Rody", "text": "Maybe I should just ditch and tell him I got in an accident..." },
+                { "speaker": "Vincent", "text": "Oh good, you made it." },
+                { "speaker": "Rody", "text": "—Ohhh hey! Yep, here I am, in the flesh, super stoked to be here!" },
+                { "speaker": "Vincent", "text": "You don't need to act so excited. Come in." },
+                { "speaker": "Rody", "text": "Right, uh—pardon the intrusion." }
+              ],
+              "simulated_stats_delta": { "suspicion": 2, "affinity": 2 },
+              "flags_set": [
+                { "flag": "phone_call_received", "value": true },
+                { "flag": "dinner_party_attended", "value": true },
+                { "flag": "ending_branching_available", "value": true }
+              ],
+              "followup": {
+                "choice_id": "day6_apartment_exploration_and_party",
+                "type": "sequence",
+                "steps": [
+                  {
+                    "step_id": "apartment_entry",
+                    "dialogue": [
+                      { "speaker": "Rody", "text": "Wow, this place sure looks...uh...well." },
+                      { "speaker": "Rody", "text": "Your taste in interior design never goes anywhere, I guess." }
+                    ],
+                    "flags_set": [{ "flag": "apartment_entered", "value": true }]
+                  },
+                  {
+                    "step_id": "apartment_observations",
+                    "type": "noninteractive_info",
+                    "observations": [
+                      "Furniture: Decorative but uncomfortable",
+                      "Fruit bowl: Fake fruit (ornamental)",
+                      "Cello: Well-made but dust-covered (never played)",
+                      "Paintings: Horror-themed (incl. \"Saturn Devouring His Son\" by Goya)",
+                      "Kitchen: Well-used, lived-in (contrast to rest of apartment)",
+                      "Bed: Only comfortable furniture; indents on both sides (sign of shared sleeping)",
+                      "Bathroom tub: \"Ugly\" (Rody finds it distressing)",
+                      "Window view: Manon's silhouette visible (then empty)",
+                      "Nightstand: Freezer key (Vincent catches Rody immediately after)"
+                    ],
+                    "flags_set": [{ "flag": "apartment_observations_seen", "value": true }]
+                  },
+                  {
+                    "step_id": "vincent_arrival_dialogue",
+                    "dialogue": [
+                      { "speaker": "Vincent", "text": "Guest? Rody, no. I had to find someone to cater when they arrive." },
+                      { "speaker": "Rody", "text": "...Wait, you called me here for WORK?" },
+                      { "speaker": "Vincent", "text": "The dishes are on the kitchen counter." },
+                      { "speaker": "Vincent", "text": "Go fetch them and ask around if anyone wants one when they get here." },
+                      { "speaker": "Rody", "text": "Now listen here, I may work for you but I'm not some kind of your pet dog!" },
+                      { "speaker": "Rody", "text": "Besides, I'm actually here to ask you about—" },
+                      { "speaker": "System", "text": "[Doorbell]" },
+                      { "speaker": "Vincent", "text": "That must be them. Were you saying something?" },
+                      { "speaker": "Rody", "text": "—GAH! Alright, FINE!" }
+                    ],
+                    "flags_set": [{ "flag": "cater_sequence_started", "value": true }]
+                  },
+                  {
+                    "step_id": "guest_1_tank_top",
+                    "type": "dialogue_branch",
+                    "dialogue": [
+                      { "speaker": "System", "text": "[Serve correct dish]" },
+                      { "speaker": "Guest", "text": "Let me take one." },
+                      { "speaker": "System", "text": "[Successfully catered]" },
+                      { "speaker": "Guest", "text": "So how did you end up meeting Vincent?" }
+                    ],
+                    "branches": [
+                      {
+                        "branch_id": "g1_through_work",
+                        "label": "Through work",
+                        "dialogue": [
+                          { "speaker": "Guest", "text": "Ooohhh—so you're a cook there?" },
+                          { "speaker": "Rody", "text": "Not exactly." },
+                          { "speaker": "Guest", "text": "A waiter then?" },
+                          { "speaker": "Rody", "text": "You could say that." },
+                          { "speaker": "Guest", "text": "And he convinced you to hand out snacks?" },
+                          { "speaker": "Guest", "text": "Is he even paying you?" },
+                          { "speaker": "Rody", "text": "..." },
+                          { "speaker": "Guest", "text": "Wait, oh my god, he's not even paying you." }
+                        ],
+                        "simulated_stats_delta": { "suspicion": 1, "affinity": 0 }
+                      },
+                      {
+                        "branch_id": "g1_through_bistro",
+                        "label": "Through bistro",
+                        "dialogue": [],
+                        "simulated_stats_delta": { "suspicion": 0, "affinity": 0 }
+                      },
+                      {
+                        "branch_id": "g1_through_friend",
+                        "label": "Through friend",
+                        "dialogue": [],
+                        "simulated_stats_delta": { "suspicion": 0, "affinity": 0 }
+                      }
+                    ],
+                    "flags_set": [{ "flag": "guest1_completed", "value": true }]
+                  },
+                  {
+                    "step_id": "guest_2_long_hair",
+                    "type": "dialogue_branch",
+                    "dialogue": [
+                      { "speaker": "System", "text": "[Serve correct dish]" },
+                      { "speaker": "Guest", "text": "Yes, I'd like that one." },
+                      { "speaker": "System", "text": "[Successfully catered]" },
+                      { "speaker": "Guest", "text": "So who are you supposed to be?" }
+                    ],
+                    "branches": [
+                      {
+                        "branch_id": "g2_waiter",
+                        "label": "A waiter",
+                        "dialogue": [
+                          { "speaker": "Guest", "text": "And you're serving...wearing THAT?" },
+                          { "speaker": "Rody", "text": "What's that supposed to mean? What's wrong with it?" },
+                          { "speaker": "Guest", "text": "Look at a mirror and it'll speak for itself." }
+                        ],
+                        "simulated_stats_delta": { "suspicion": 1, "affinity": -1 }
+                      },
+                      {
+                        "branch_id": "g2_impressive",
+                        "label": "Someone super impressive",
+                        "dialogue": [
+                          { "speaker": "Guest", "text": "So a waiter?" },
+                          { "speaker": "Rody", "text": "Y—Yeah." }
+                        ],
+                        "simulated_stats_delta": { "suspicion": 0, "affinity": 0 }
+                      },
+                      {
+                        "branch_id": "g2_best_friend",
+                        "label": "Vince's best friend",
+                        "dialogue": [
+                          { "speaker": "Guest", "text": "..." },
+                          { "speaker": "Rody", "text": "..." },
+                          { "speaker": "Rody", "text": "Okay yeah, that was a lie, sorry." },
+                          { "speaker": "Guest", "text": "Mm-hmm. You're really bad at this." }
+                        ],
+                        "simulated_stats_delta": { "suspicion": 2, "affinity": -2 }
+                      }
+                    ],
+                    "flags_set": [{ "flag": "guest2_completed", "value": true }]
+                  },
+                  {
+                    "step_id": "guest_3_sunglasses",
+                    "type": "dialogue_branch",
+                    "dialogue": [
+                      { "speaker": "System", "text": "[Serve correct dish]" },
+                      { "speaker": "Guest", "text": "Ooo, what's that dish?" },
+                      { "speaker": "System", "text": "[Successfully catered]" },
+                      { "speaker": "Guest", "text": "So what's your favorite thing about Chef's food?" }
+                    ],
+                    "branches": [
+                      {
+                        "branch_id": "g3_looks",
+                        "label": "How it looks",
+                        "dialogue": [
+                          { "speaker": "Rody", "text": "It looks...appetizing?" },
+                          { "speaker": "Guest", "text": "*Appetizing?*" },
+                          { "speaker": "Rody", "text": "Erm—or Appealing? In an artistic way." },
+                          { "speaker": "Guest", "text": "Oh that makes much more sense. I agree entirely." }
+                        ],
+                        "simulated_stats_delta": { "suspicion": 0, "affinity": 1 }
+                      },
+                      {
+                        "branch_id": "g3_feels",
+                        "label": "How it feels",
+                        "dialogue": [],
+                        "simulated_stats_delta": { "suspicion": 0, "affinity": 0 }
+                      },
+                      {
+                        "branch_id": "g3_tastes",
+                        "label": "How it tastes",
+                        "dialogue": [
+                          { "speaker": "Guest", "text": "And that is...?" },
+                          { "speaker": "Rody", "text": "Erm...uh. Well." },
+                          { "speaker": "Rody", "text": "I'm gonna be honest, his food is fine but doesn't taste genuine." },
+                          { "speaker": "Rody", "text": "It feels self-absorbed. Like it's not made FOR others." },
+                          { "speaker": "Rody", "text": "Like what a chef is supposed to do?" },
+                          { "speaker": "Guest", "text": "Not in the slightest. Isn't that what makes him great?" },
+                          { "speaker": "Rody", "text": "Nevermind." },
+                          { "speaker": "Guest", "text": "Your voice is pretty loud by the way. Chef can hear you, right?" },
+                          { "speaker": "Rody", "text": "Wait, he can?!" }
+                        ],
+                        "simulated_stats_delta": { "suspicion": 4, "affinity": -1 },
+                        "flags_set": [{ "flag": "chef_can_hear_hint", "value": true }]
+                      }
+                    ],
+                    "flags_set": [{ "flag": "guest3_completed", "value": true }]
+                  },
+                  {
+                    "step_id": "guest_4_richard",
+                    "type": "dialogue_branch",
+                    "dialogue": [
+                      { "speaker": "System", "text": "[Serves all other guests first]" },
+                      { "speaker": "NPC", "text": "...Rody? Is that you?" },
+                      { "speaker": "Rody", "text": "Huh? Who said that?" },
+                      { "speaker": "NPC", "text": "I thought so, it IS you!" },
+                      { "speaker": "NPC", "text": "It's me, Richard! From class! Remember? Econ?" },
+                      { "speaker": "NPC", "text": "I think you were majoring in Hospitality too!" },
+                      { "speaker": "Rody", "text": "Right, ah...College is fuzzy for me." },
+                      { "speaker": "NPC", "text": "I stopped seeing you after a while. Did you switch majors?" }
+                    ],
+                    "branches": [
+                      {
+                        "branch_id": "r_flunked",
+                        "label": "I flunked out",
+                        "dialogue": [
+                          { "speaker": "NPC", "text": "Oh yeah, we kinda assumed." },
+                          { "speaker": "Rody", "text": "—We?" },
+                          { "speaker": "NPC", "text": "Mm! Everyone in class thought you wouldn't keep up." },
+                          { "speaker": "NPC", "text": "Your poor parents—how did they take it? They must've been disappointed, right?" },
+                          { "speaker": "Rody", "text": "..." }
+                        ],
+                        "simulated_stats_delta": { "suspicion": 0, "affinity": -2 }
+                      },
+                      {
+                        "branch_id": "r_own_restaurant",
+                        "label": "I own my own restaurant",
+                        "dialogue": [
+                          { "speaker": "NPC", "text": "Oh wow! Is that why you're passing out hors d'ouevres for someone else at their party?" },
+                          { "speaker": "Rody", "text": "I guess I just like helping out a friend?" },
+                          { "speaker": "NPC", "text": "*Pff—* Why that's new!" },
+                          { "speaker": "NPC", "text": "Are you trying to make up for things now or something?" },
+                          { "speaker": "NPC", "text": "You know Rody, you're just as I remembered you." }
+                        ],
+                        "simulated_stats_delta": { "suspicion": 1, "affinity": -2 }
+                      },
+                      {
+                        "branch_id": "r_someone_else",
+                        "label": "You're thinking of someone else",
+                        "dialogue": [
+                          { "speaker": "NPC", "text": "Oh, are you sure? But you look just like him." },
+                          { "speaker": "Rody", "text": "Haven't got a clue, sorry." },
+                          { "speaker": "NPC", "text": "Hm...I guess you are pretty different from how I remember, in my memory he was way more full of himself." },
+                          { "speaker": "NPC", "text": "He would've said something embarrassing like 'I own my own restaurant now!'" },
+                          { "speaker": "Rody", "text": "..." },
+                          { "speaker": "NPC", "text": "Chin up, Rody! It's a joke!" },
+                          { "speaker": "Rody", "text": "..." }
+                        ],
+                        "simulated_stats_delta": { "suspicion": 0, "affinity": -1 }
+                      }
+                    ],
+                    "converges_to_dialogue": [
+                      { "speaker": "NPC", "text": "But it's really surprising to see you again!" },
+                      { "speaker": "NPC", "text": "What I really want to know is how you ended up working for someone like Chef Charbonneau?" },
+                      { "speaker": "NPC", "text": "Did you get on your knees and beg him or something? Haha." },
+                      { "speaker": "Rody", "text": "..." },
+                      { "speaker": "Rody", "text": "..." },
+                      { "speaker": "Rody", "text": "I gotta go piss." },
+                      { "speaker": "NPC", "text": "Pardon??" },
+                      { "speaker": "Rody", "text": "I need to piss. Real bad. Like. Right now." },
+                      { "speaker": "NPC", "text": "You could've just said 'the bathroom'." },
+                      { "speaker": "Rody", "text": "Okaybye." }
+                    ],
+                    "flags_set": [{ "flag": "richard_encountered", "value": true }]
+                  },
+                  {
+                    "step_id": "confrontation_about_manon",
+                    "type": "single_choice",
+                    "prompt": "Confrontation with Vincent",
+                    "options": [
+                      {
+                        "option_id": "ask_manon",
+                        "label": "How do you know Manon?",
+                        "dialogue": [
+                          { "speaker": "Rody", "text": "Now can we talk?" },
+                          { "speaker": "Vincent", "text": "What's gotten you all worked up?" },
+                          { "speaker": "Vincent", "text": "Fine, let's hear it." },
+                          { "speaker": "Rody", "text": "How do you know Manon?" },
+                          { "speaker": "Vincent", "text": "Who?" },
+                          { "speaker": "Rody", "text": "Manon! The one whose picture is in your office!" },
+                          { "speaker": "Rody", "text": "The one who's been sending you letters!" },
+                          { "speaker": "Rody", "text": "My GIRLFRIEND!" },
+                          { "speaker": "Vincent", "text": "Are you sure we're thinking of the same girl?" },
+                          { "speaker": "Rody", "text": "I saw the picture of course I'm—" },
+                          { "speaker": "Vincent", "text": "Because that Manon told me she dumped some pathetic red-haired plouc a week ago." },
+                          { "speaker": "Vincent", "text": "So it can't be the same one." },
+                          { "speaker": "Rody", "text": "Well—Yeah, but—" },
+                          { "speaker": "Vincent", "text": "Stay out of my office, Rody." }
+                        ],
+                        "simulated_stats_delta": { "suspicion": 6, "affinity": -4 },
+                        "flags_set": [{ "flag": "manon_confrontation_done", "value": true }]
+                      }
+                    ]
+                  },
+                  {
+                    "step_id": "freezer_key_acquisition",
+                    "type": "sequence",
+                    "title": "Freezer Key Acquisition (Vincent catches Rody)",
+                    "dialogue": [
+                      { "speaker": "System", "text": "[Rody searches nightstand, finds freezer key]" },
+                      { "speaker": "Vincent", "text": "Looking for anything specific?" },
+                      { "speaker": "Rody", "text": "GAH! Um. Yeah. I was just—" }
+                    ],
+                    "choices": [
+                      {
+                        "choice_id": "day6_excuse",
+                        "type": "single_choice",
+                        "prompt": "Excuse yourself",
+                        "options": [
+                          {
+                            "option_id": "excuse_nap",
+                            "label": "Taking a nap",
+                            "dialogue": [
+                              { "speaker": "Vincent", "text": "...In MY room?" },
+                              { "speaker": "Rody", "text": "Yup." },
+                              { "speaker": "Vincent", "text": "...In MY bed?" },
+                              { "speaker": "Rody", "text": "Mhm, yeah." },
+                              { "speaker": "Vincent", "text": "Even though you could've just gone home?" },
+                              { "speaker": "Rody", "text": "Look, are the particulars really that important?" },
+                              { "speaker": "Vincent", "text": "Guess not." }
+                            ],
+                            "simulated_stats_delta": { "suspicion": 2, "affinity": 0 },
+                            "flags_set": [{ "flag": "freezer_key_excuse", "value": "nap" }]
+                          },
+                          {
+                            "option_id": "excuse_bathroom",
+                            "label": "Looking for bathroom",
+                            "dialogue": [
+                              { "speaker": "Vincent", "text": "And didn't you think to check the door closest to the kitchen first?" },
+                              { "speaker": "Rody", "text": "W—What other door?" },
+                              { "speaker": "Vincent", "text": "...You don't have to serve the other guests anymore, come on." }
+                            ],
+                            "simulated_stats_delta": { "suspicion": 1, "affinity": 0 },
+                            "flags_set": [{ "flag": "freezer_key_excuse", "value": "bathroom" }]
+                          },
+                          {
+                            "option_id": "excuse_naproom",
+                            "label": "Lacking for a naproom???",
+                            "dialogue": [
+                              { "speaker": "Vincent", "text": "*Pardon??*" },
+                              { "speaker": "Rody", "text": "...I mean...Taking a nap. In the bathroom?" },
+                              { "speaker": "Vincent", "text": "." },
+                              { "speaker": "Vincent", "text": "...Is that supposed to be any better?" },
+                              { "speaker": "Rody", "text": "...Well is it?" },
+                              { "speaker": "Vincent", "text": "*Ugh.*" },
+                              { "speaker": "Vincent", "text": "...You don't have to serve the other guests anymore, come on." },
+                              { "speaker": "Rody", "text": "Wait, that REALLY worked??—" }
+                            ],
+                            "simulated_stats_delta": { "suspicion": 2, "affinity": 1 },
+                            "flags_set": [{ "flag": "freezer_key_excuse", "value": "naproom" }]
+                          }
+                        ]
+                      }
+                    ],
+                    "flags_set": [{ "flag": "freezer_key_acquired", "value": true }]
+                  },
+                  {
+                    "step_id": "party_ends_abruptly",
+                    "dialogue": [
+                      { "speaker": "Rody", "text": "...Where'd everyone go?" },
+                      { "speaker": "Vincent", "text": "The party ended." },
+                      { "speaker": "Rody", "text": "What? That's...This early in the night?" },
+                      { "speaker": "Vincent", "text": "Something came up." },
+                      { "speaker": "Rody", "text": "Is everything okay?" },
+                      { "speaker": "Vincent", "text": "..." },
+                      { "speaker": "Rody", "text": "...Vince?" },
+                      { "speaker": "Vincent", "text": "—You better go home. You have work in the morning." },
+                      { "speaker": "Rody", "text": "...Right, my last day." },
+                      { "speaker": "Rody", "text": "—Well, thanks for the party, I guess." },
+                      { "speaker": "Rody", "text": "Good night, Vince." },
+                      { "speaker": "Vincent", "text": "..." },
+                      { "speaker": "Vincent", "text": "Night, Rody." }
+                    ],
+                    "flags_set": [{ "flag": "party_ended", "value": true }]
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "choice_id": "day6_phone_call_not_ready_fallback",
+          "type": "gated_info",
+          "prompt": "If phone_call_ready is FALSE",
+          "gate": { "requires_any_flag_false": ["phone_call_ready"] },
+          "info": {
+            "note": "No phone call occurs if requirements are not met. Player proceeds to Day 7 normal shift path.",
+            "flags_set": [
+              { "flag": "phone_call_received", "value": false },
+              { "flag": "dinner_party_attended", "value": false }
+            ]
+          }
+        }
+      ],
+      "flags_set": [
+        { "flag": "day_6_completed", "value": true }
+      ],
+      "money_earned": "175-200",
+      "reward_item": "Fresh lemon tart",
+      "instant_death_flags": []
+    },
+    {
+      "day": 7,
+      "type": "Ending (4 variations)",
+      "title": "DAY 7: ENDING (4 VARIATIONS)",
+      "playable": true,
+      "customers_if_table_for_one": 8,
+      "menu_if_table_for_one": {
+        "appetizer": "Steak tartare",
+        "main": "Lamb chops with cognac dijon cream sauce",
+        "side": "Toast cannibale",
+        "dessert": "Red wine plums"
+      },
+      "endings_reference": [
+        "TABLE_FOR_ONE",
+        "BEST_SERVED_COLD",
+        "BEST_SERVED_HOT",
+        "ABATTOIR"
+      ],
+      "notes": [
+        "If player never received/declined phone call -> play full shift and end with Table for One sequence.",
+        "If phone call accepted -> freezer becomes accessible and endings 2–4 become available."
+      ],
+      "choices": [
+        {
+          "choice_id": "day7_enter_freezer",
+          "type": "gated_choice",
+          "prompt": "Enter the freezer (Ending branching trigger)",
+          "gate": {
+            "requires_all_flags_true": ["freezer_key_acquired", "dinner_party_attended"]
+          },
+          "options": [
+            {
+              "option_id": "day7_freezer_enter",
+              "label": "Enter freezer",
+              "flags_set": [{ "flag": "entered_freezer", "value": true }],
+              "simulated_stats_delta": { "suspicion": 5, "affinity": -5 },
+              "dialogue": []
+            },
+            {
+              "option_id": "day7_freezer_skip",
+              "label": "Do not enter freezer",
+              "flags_set": [{ "flag": "entered_freezer", "value": false }],
+              "simulated_stats_delta": { "suspicion": 0, "affinity": 0 },
+              "dialogue": []
+            }
+          ]
+        }
+      ],
+      "endings": [
+        {
+          "id": "ENDING_1",
+          "name": "TABLE_FOR_ONE",
+          "title": "Table for One",
+          "conditions": {
+            "any_of": [
+              { "flag": "phone_call_received", "equals": false },
+              { "flag": "dinner_party_attended", "equals": false }
+            ]
+          },
+          "sequence": {
+            "restaurant_shift": true,
+            "dialogue_full": [
+              { "speaker": "System", "text": "[Rody finishes serving all customers]" },
+              { "speaker": "Rody", "text": "I quit." },
+              { "speaker": "Vincent", "text": "!?!—Pardon?" },
+              { "speaker": "Rody", "text": "I quit. I uh—You said this was temporary, remember?" },
+              { "speaker": "Rody", "text": "I know I'm supposed to give 2 weeks but you've been seeming pretty antsy lately so—" },
+              { "speaker": "Rody", "text": "You probably want someone more qualified." },
+              { "speaker": "Vincent", "text": "...Well, the position's still available if you need." },
+              { "speaker": "Vincent", "text": "You sounded fairly desperate when you first asked to work here." },
+              { "speaker": "Rody", "text": "Yeah, and now you don't need to worry about it anymore." },
+              { "speaker": "Vincent", "text": "..." },
+              { "speaker": "Vincent", "text": "...Do you like the meal at least?" },
+              { "speaker": "Rody", "text": "Huh?" },
+              { "speaker": "Vincent", "text": "The—The LEFTOVERS." },
+              { "speaker": "Rody", "text": "Oh!—I'll reheat the rest tonight for sure. It's pretty bitter though." },
+              { "speaker": "Vincent", "text": "...Right." },
+              { "speaker": "Vincent", "text": "Have a good night, Rody." },
+              { "speaker": "Rody", "text": "You too, Boss." },
+              { "speaker": "System", "text": "[Apartment Sequence]" },
+              { "speaker": "Rody", "text": "This should be enough..." },
+              { "speaker": "Rody", "text": "Hey, Manon!—I know you said we should take a break and all—" },
+              { "speaker": "Rody", "text": "But I was thinking maybe we could get dinner somewhere?" },
+              { "speaker": "Rody", "text": "Your choice! I wanted to say sorry and—" },
+              { "speaker": "AUTOMATED", "text": "Your call could not be connected. Please try again later. Goodbye." },
+              { "speaker": "Rody", "text": "...?!" },
+              { "speaker": "System", "text": "[RETRY 1]" },
+              { "speaker": "Rody", "text": "Hey, Manon? Hi, I tried calling earlier but I don't think you picked up." },
+              { "speaker": "Rody", "text": "I was wondering if you wanted to get dinner." },
+              { "speaker": "Rody", "text": "Super casual, but we could go anywhere you want. Money's no problem for me, so—" },
+              { "speaker": "AUTOMATED", "text": "Your call could not be connected. Goodbye." },
+              { "speaker": "Rody", "text": "..." },
+              { "speaker": "System", "text": "[RETRY 2]" },
+              { "speaker": "Rody", "text": "Manon? Hello?" },
+              { "speaker": "AUTOMATED", "text": "Your call could not be connected. Goodbye." },
+              { "speaker": "Rody", "text": "..." },
+              { "speaker": "System", "text": "[RETRY 3]" },
+              { "speaker": "Rody", "text": "Manon? Hell—" },
+              { "speaker": "System", "text": "[BEEP] \"Hey, are you there?\"" },
+              { "speaker": "System", "text": "[Phone rings as credits roll]" },
+              { "speaker": "AUTOMATED", "text": "Goodbye." }
+            ]
+          },
+          "flags_set": [
+            { "flag": "ending_achieved", "value": "TABLE_FOR_ONE" }
+          ],
+          "outcome": {
+            "rody_status": "ALIVE",
+            "vincent_status": "ALIVE",
+            "manon_status": "DEAD (unknown to Rody)",
+            "notes": [
+              "ONLY ending where all major characters (Rody + Vincent) survive the week.",
+              "Manon's death is never confirmed to Rody.",
+              "Rody unknowingly ate Manon (grilled hanger steak = her remains).",
+              "Vincent's guilt compounds over time; ending is ambiguous/tragic."
+            ]
+          }
+        },
+        {
+          "id": "ENDING_2",
+          "name": "BEST_SERVED_COLD",
+          "title": "Best Served Cold",
+          "conditions": {
+            "all_of": [
+              { "flag": "phone_call_received", "equals": true },
+              { "flag": "dinner_party_attended", "equals": true },
+              { "flag": "entered_freezer", "equals": true },
+              { "flag": "matches_purchased", "equals": false }
+            ]
+          },
+          "sequence": {
+            "dialogue_full": [
+              { "speaker": "System", "text": "[Day 7 Start]" },
+              { "speaker": "Rody", "text": "...Oh, right. I can just go to the restaurant after the party last night." },
+              { "speaker": "Rody", "text": "Vincent didn't exactly make it clear when I should come in..." },
+              { "speaker": "System", "text": "[Rody goes to restaurant]" },
+              { "speaker": "System", "text": "[Freezer Sequence]" },
+              { "speaker": "System", "text": "[Rody enters freezer]" },
+              { "speaker": "System", "text": "Inside, I found a locket with a picture of me and Manon...splattered with blood." },
+              { "speaker": "System", "text": "And there was a meat grinder running beside it." },
+              { "speaker": "System", "text": "The meat...looked almost like an arm." },
+              { "speaker": "System", "text": "[Screen goes dark with CLANG]" },
+              { "speaker": "System", "text": "[Rody wakes up in freezer, tied up]" },
+              { "speaker": "Rody", "text": "Wh—Where...?" },
+              { "speaker": "System", "text": "[Vincent walks in, holding knife, sharpening it]" },
+              { "speaker": "Rody", "text": "Vincent! Wh—Please! Get away from me! I—!" },
+              { "speaker": "Vincent", "text": "Stop." },
+              { "speaker": "Vincent", "text": "You're ending up in the same place no matter what you do." },
+              { "speaker": "Vincent", "text": "But let me humor you for a moment." },
+              { "speaker": "Vincent", "text": "I'll give you 15 seconds. Try to escape while you're tied up." },
+              { "speaker": "System", "text": "[TIMER STARTS: 15, 14, 13...]" },
+              { "speaker": "System", "text": "[No matter what Rody does, he cannot escape]" },
+              { "speaker": "System", "text": "[TIMER ENDS: 0]" },
+              { "speaker": "Vincent", "text": "You couldn't even be fast to save your own life." },
+              { "speaker": "System", "text": "[Screen goes black - STABBING SOUNDS]" },
+              { "speaker": "System", "text": "[Credits roll over sound of freezer cooling fan]" }
+            ]
+          },
+          "flags_set": [
+            { "flag": "ending_achieved", "value": "BEST_SERVED_COLD" },
+            { "flag": "rody_status", "value": "DEAD" },
+            { "flag": "manon_fate_discovered", "value": false }
+          ],
+          "outcome": {
+            "notes": [
+              "Rody never learns full truth about Manon.",
+              "Dies in freezer; most hopeless ending.",
+              "Vincent still cannot taste satisfaction."
+            ]
+          }
+        },
+        {
+          "id": "ENDING_3",
+          "name": "BEST_SERVED_HOT",
+          "title": "Best Served Hot",
+          "conditions": {
+            "all_of": [
+              { "flag": "phone_call_received", "equals": true },
+              { "flag": "dinner_party_attended", "equals": true },
+              { "flag": "entered_freezer", "equals": true },
+              { "flag": "matches_purchased", "equals": true },
+              { "flag": "qte_success", "equals": true }
+            ]
+          },
+          "sequence": {
+            "dialogue_full": [
+              { "speaker": "System", "text": "[Same discovery as Ending 2]" },
+              { "speaker": "System", "text": "[Rody wakes up tied in freezer]" },
+              { "speaker": "System", "text": "[Vincent walks in with knife]" },
+              { "speaker": "Vincent", "text": "You're ending up in the same place no matter what you do..." },
+              { "speaker": "Vincent", "text": "Try to escape." },
+              { "speaker": "System", "text": "[TIMER: 15 seconds]" },
+              { "speaker": "Rody", "text": "The matches! I have—" },
+              { "speaker": "System", "text": "[Burns through ropes]" },
+              { "speaker": "System", "text": "[Door is frozen, can't open directly]" },
+              { "speaker": "System", "text": "[Puzzle Sequence]" },
+              { "speaker": "System", "text": "1. Find flour bags near prep area" },
+              { "speaker": "System", "text": "2. Stand on bags to reach cooling unit fan" },
+              { "speaker": "System", "text": "3. Turn on meat cutter" },
+              { "speaker": "System", "text": "4. Cut hanging meat for bones" },
+              { "speaker": "System", "text": "5. Jam bone into fan to stop it" },
+              { "speaker": "System", "text": "6. Break window from inside to unlock door" },
+              { "speaker": "System", "text": "7. Escape freezer" },
+              { "speaker": "System", "text": "[Kitchen Confrontation]" },
+              { "speaker": "System", "text": "[Rody escapes freezer, runs into kitchen]" },
+              { "speaker": "System", "text": "[Vincent appears from office, eyes sinister]" },
+              { "speaker": "Rody", "text": "!!" },
+              { "speaker": "System", "text": "[Vincent lunges forward]" },
+              { "speaker": "System", "text": "[QTE PROMPT: DODGE/MOVE - SUCCESS]" },
+              { "speaker": "System", "text": "[If successful: Rody dodges; reaches counter]" },
+              { "speaker": "System", "text": "[Vincent attacks again with knife]" },
+              { "speaker": "System", "text": "[QTE PROMPT 2 - SUCCESS]" },
+              { "speaker": "System", "text": "[Rody finds broken wine bottle on counter]" },
+              { "speaker": "System", "text": "[Rody fights back, stabs Vincent in throat repeatedly]" },
+              { "speaker": "System", "text": "[Vincent gravely injured but alive; eyes follow Rody]" },
+              { "speaker": "Rody", "text": "...I'm done. I'm leaving." },
+              { "speaker": "System", "text": "[Attempting to leave triggers Rody's realization]" },
+              { "speaker": "Rody", "text": "No...No, I need...I need to be sure he won't—" },
+              { "speaker": "System", "text": "[Rody goes to freezer, grabs cooking oil]" },
+              { "speaker": "System", "text": "[Douses Vincent with oil; Vincent can only watch, powerless]" },
+              { "speaker": "System", "text": "[Rody ignites matches, sets restaurant on fire]" },
+              { "speaker": "System", "text": "[Rody watches flames consume restaurant]" },
+              { "speaker": "Rody", "text": "...I should probably eat something." },
+              { "speaker": "System", "text": "[Credits roll]" },
+              { "speaker": "System", "text": "[Post-Credit Cutscene (Manon Flashback)]" },
+              { "speaker": "System", "text": "[Scene: Days before events - Rody's apartment]" },
+              { "speaker": "Manon", "text": "Rody...I care about you. That's why I have to do this." },
+              { "speaker": "Manon", "text": "Every time you sacrifice yourself for me, it hurts me more." },
+              { "speaker": "Manon", "text": "You're killing yourself. And I can't watch anymore." },
+              { "speaker": "Rody", "text": "Manon—" },
+              { "speaker": "Manon", "text": "I'm sorry. I'm so sorry. But I have to let you go." },
+              { "speaker": "System", "text": "[ONLY clear image of Manon shown here]" },
+              { "speaker": "Manon", "text": "I hope you find someone who loves you the way you deserve." },
+              { "speaker": "System", "text": "[Screen fades]" }
+            ]
+          },
+          "flags_set": [
+            { "flag": "ending_achieved", "value": "BEST_SERVED_HOT" },
+            { "flag": "rody_status", "value": "ALIVE" },
+            { "flag": "vincent_status", "value": "DEAD" },
+            { "flag": "manon_truth_learned", "value": true }
+          ],
+          "outcome": {
+            "notes": [
+              "ONLY 'good' ending: Rody survives and gets revenge.",
+              "Requires matches and QTE success; most 'earned' ending."
+            ]
+          }
+        },
+        {
+          "id": "ENDING_4",
+          "name": "ABATTOIR",
+          "title": "Abattoir",
+          "conditions": {
+            "all_of": [
+              { "flag": "phone_call_received", "equals": true },
+              { "flag": "dinner_party_attended", "equals": true },
+              { "flag": "entered_freezer", "equals": true },
+              { "flag": "matches_purchased", "equals": true },
+              { "flag": "qte_failed_any", "equals": true }
+            ]
+          },
+          "sequence": {
+            "dialogue_full": [
+              { "speaker": "System", "text": "[Everything same as Ending 3 until QTE sequence]" },
+              { "speaker": "System", "text": "[QTE PROMPT - ANY FAIL]" },
+              { "speaker": "System", "text": "[Vincent successfully stabs Rody in throat with corkscrew]" },
+              { "speaker": "System", "text": "[Rody gurgling sounds, collapses]" },
+              { "speaker": "Vincent", "text": "...Disappointing." },
+              { "speaker": "System", "text": "[Vincent drags Rody's bleeding corpse across kitchen floor]" },
+              { "speaker": "System", "text": "[Trail of blood visible]" },
+              { "speaker": "System", "text": "[Screen fades]" },
+              { "speaker": "System", "text": "[Sound effect: TABLE SAW RUNNING]" },
+              { "speaker": "System", "text": "[Credits roll silently over saw sounds]" }
+            ]
+          },
+          "flags_set": [
+            { "flag": "ending_achieved", "value": "ABATTOIR" },
+            { "flag": "rody_status", "value": "DEAD" },
+            { "flag": "vincent_status", "value": "ALIVE" },
+            { "flag": "game_over", "value": true }
+          ],
+          "outcome": {
+            "notes": [
+              "Rody becomes Vincent's second victim.",
+              "Most gruesome failure ending; triggered by failing any QTE."
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}
+    
